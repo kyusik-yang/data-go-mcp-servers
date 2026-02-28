@@ -52,6 +52,7 @@ MCP 서버는 Model Context Protocol을 통해 특정 기능을 노출하는 경
 | **💰 금융 정보** | **FSC Financial Info** | 금융위원회 기업 재무정보 (재무제표, 손익계산서) | `data-go-mcp.fsc-financial-info` | [![PyPI](https://img.shields.io/pypi/v/data-go-mcp.fsc-financial-info)](https://pypi.org/project/data-go-mcp.fsc-financial-info/) |
 | **📜 공공 기록** | **Presidential Speeches** | 대통령기록관 연설문 조회 | `data-go-mcp.presidential-speeches` | [![PyPI](https://img.shields.io/pypi/v/data-go-mcp.presidential-speeches)](https://pypi.org/project/data-go-mcp.presidential-speeches/) |
 | **⚗️ 안전 정보** | **MSDS Chemical Info** | 물질안전보건자료(MSDS) 화학물질 정보 | `data-go-mcp.msds-chemical-info` | [![PyPI](https://img.shields.io/pypi/v/data-go-mcp.msds-chemical-info)](https://pypi.org/project/data-go-mcp.msds-chemical-info/) |
+| **🏛️ 국회 정보** | **Open Assembly** | 열린국회정보 의안·의원·표결·심사정보 조회 | `data-go-mcp.open-assembly` | 배포 예정 |
 
 ## 설치 및 설정
 
@@ -73,6 +74,9 @@ uv pip install data-go-mcp.presidential-speeches
 
 # 안전 정보 서버
 uv pip install data-go-mcp.msds-chemical-info
+
+# 국회 정보 서버
+uv pip install data-go-mcp.open-assembly
 ```
 
 ### pip을 사용한 설치
@@ -93,6 +97,9 @@ pip install data-go-mcp.presidential-speeches
 
 # 안전 정보 서버
 pip install data-go-mcp.msds-chemical-info
+
+# 국회 정보 서버
+pip install data-go-mcp.open-assembly
 ```
 
 ### Claude Desktop 설정
@@ -145,6 +152,13 @@ Claude Desktop의 설정 파일에 MCP 서버를 추가합니다:
       "args": ["data-go-mcp.msds-chemical-info@latest"],
       "env": {
         "API_KEY": "your-api-key-here"
+      }
+    },
+    "data-go-mcp.open-assembly": {
+      "command": "uvx",
+      "args": ["data-go-mcp.open-assembly@latest"],
+      "env": {
+        "ASSEMBLY_API_KEY": "your-assembly-api-key-here"
       }
     }
   }
@@ -275,6 +289,32 @@ AI 도구에서 다음과 같이 요청할 수 있습니다:
   - `01`: 부가가치세 일반과세자
   - `02`: 부가가치세 간이과세자
   - 기타: 면세사업자 등
+
+### 열린국회정보 (Open Assembly)
+
+국회 의안·의원·표결 정보를 조회할 수 있습니다. API 키는 [열린국회정보](https://open.assembly.go.kr) 회원가입 후 무료로 발급받을 수 있습니다.
+
+#### 환경 변수 설정
+
+```bash
+export ASSEMBLY_API_KEY="your-assembly-api-key-here"  # open.assembly.go.kr에서 발급받은 API 키
+```
+
+#### 사용 가능한 도구 (P1 — 엔드포인트 확인 완료)
+
+- **`search_bills`**: 국회의원 발의법률안 검색 (대수, 법률안명, 발의자, 처리결과 필터)
+- **`get_bill_detail`**: 의안 통합정보 조회 (처리결과, 위원회, 원문링크 등)
+- **`get_member_info`**: 국회의원 정보 조회 (정당, 선거구, 위원회, 당선구분)
+- **`get_vote_results`**: 의안별 본회의 표결현황 (찬성/반대/기권/불참)
+- **`get_bill_review`**: 의안 처리·심사정보 조회
+
+#### 사용 예시
+
+```
+"22대 국회에서 발의된 AI 관련 법률안을 찾아줘"
+"더불어민주당 소속 의원 목록을 알려줘"
+"반도체특별법 표결 결과를 보여줘"
+```
 
 ## 개발자 가이드
 
