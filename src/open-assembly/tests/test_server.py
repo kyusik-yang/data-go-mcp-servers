@@ -114,6 +114,84 @@ class TestGetMemberInfoTool:
         assert call_kwargs.kwargs["unit_cd"] == "100021"
 
 
+class TestGetBillProposersTool:
+    @pytest.mark.asyncio
+    async def test_returns_proposers_by_bill_id(self):
+        from data_go_mcp.open_assembly.server import get_bill_proposers
+
+        sample_rows = [
+            {"PPSR_NM": "홍길동", "PPSR_POLY_NM": "더불어민주당", "REP_DIV": "대표발의", "PPSR_ROLE": "발의자"},
+            {"PPSR_NM": "김철수", "PPSR_POLY_NM": "더불어민주당", "REP_DIV": "공동발의", "PPSR_ROLE": "발의자"},
+        ]
+        mock_client = _make_mock_client(sample_rows, "get_bill_proposers")
+
+        with patch("data_go_mcp.open_assembly.server.AssemblyAPIClient", return_value=mock_client):
+            result = await get_bill_proposers(bill_id="PRC_Y2Z6X0Y2W1X9V1W1D4E4D3B7B8Z1A1")
+
+        assert result["count"] == 2
+        assert result["proposers"][0]["PPSR_NM"] == "홍길동"
+        assert "error" not in result
+
+    @pytest.mark.asyncio
+    async def test_uses_bill_id_param(self):
+        """BILLINFOPPSR는 BILL_ID 파라미터를 사용해야 함."""
+        from data_go_mcp.open_assembly.server import get_bill_proposers
+
+        mock_client = _make_mock_client([], "get_bill_proposers")
+
+        with patch("data_go_mcp.open_assembly.server.AssemblyAPIClient", return_value=mock_client):
+            await get_bill_proposers(bill_id="PRC_TEST123")
+
+        call_kwargs = mock_client.get_bill_proposers.call_args
+        assert call_kwargs.kwargs["bill_id"] == "PRC_TEST123"
+
+
+class TestGetCommitteeMembersTool:
+    @pytest.mark.asyncio
+    async def test_returns_committee_members(self):
+        from data_go_mcp.open_assembly.server import get_committee_members
+
+        sample_rows = [
+            {"HG_NM": "홍길동", "POLY_NM": "더불어민주당", "CMIT_NM": "법제사법위원회"},
+        ]
+        mock_client = _make_mock_client(sample_rows, "get_committee_members")
+
+        with patch("data_go_mcp.open_assembly.server.AssemblyAPIClient", return_value=mock_client):
+            result = await get_committee_members(age="22", committee="법제사법위원회")
+
+        assert result["count"] == 1
+        assert result["members"][0]["CMIT_NM"] == "법제사법위원회"
+
+
+class TestUnavailableTools:
+    @pytest.mark.asyncio
+    async def test_search_minutes_returns_not_supported(self):
+        from data_go_mcp.open_assembly.server import search_minutes
+
+        result = await search_minutes()
+        assert "error" in result
+        assert result["count"] == 0
+        assert "확인되지 않았습니다" in result["message"]
+
+    @pytest.mark.asyncio
+    async def test_get_petitions_returns_not_supported(self):
+        from data_go_mcp.open_assembly.server import get_petitions
+
+        result = await get_petitions()
+        assert "error" in result
+        assert result["count"] == 0
+        assert "확인되지 않았습니다" in result["message"]
+
+    @pytest.mark.asyncio
+    async def test_get_bill_content_returns_not_supported(self):
+        from data_go_mcp.open_assembly.server import get_bill_content
+
+        result = await get_bill_content(bill_id="PRC_TEST")
+        assert "error" in result
+        assert result["content"] is None
+        assert "확인되지 않았습니다" in result["message"]
+
+
 class TestGetVoteResultsTool:
     @pytest.mark.asyncio
     async def test_returns_vote_results(self):

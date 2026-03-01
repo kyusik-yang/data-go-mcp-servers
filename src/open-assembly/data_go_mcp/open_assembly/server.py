@@ -247,133 +247,23 @@ async def get_bill_review(
 
 
 @mcp.tool()
-async def search_minutes(
-    age: Optional[str] = None,
-    committee: Optional[str] = None,
-    date_from: Optional[str] = None,
-    date_to: Optional[str] = None,
-    minutes_type: str = "committee",
-    page: int = 1,
-    page_size: int = 10,
-) -> dict[str, Any]:
-    """
-    국회 회의록을 검색합니다 (위원회 또는 본회의).
-
-    Search National Assembly meeting minutes.
-
-    NOTE: 이 tool은 엔드포인트 코드 확인 후 활성화됩니다.
-    client.py의 EP_MINUTES_COMMITTEE / EP_MINUTES_PLENARY를 업데이트하세요.
-    infaId: OR137O001023MZ19321 (위원회), OO1X9P001017YF13038 (본회의)
-
-    Args:
-        age: 대수 (선택)
-        committee: 위원회명 (선택, minutes_type="committee"일 때)
-        date_from: 시작일 (선택, YYYYMMDD)
-        date_to: 종료일 (선택, YYYYMMDD)
-        minutes_type: "committee" (위원회) | "plenary" (본회의) (기본값: "committee")
-        page: 페이지 번호 (기본값: 1)
-        page_size: 페이지당 결과수 (기본값: 10)
-    """
-    async with AssemblyAPIClient() as client:
-        try:
-            rows = await client.search_minutes(
-                age=age,
-                committee=committee,
-                date_from=date_from,
-                date_to=date_to,
-                page=page,
-                page_size=page_size,
-                minutes_type=minutes_type,
-            )
-            return {
-                "minutes": rows,
-                "count": len(rows),
-                "message": f"{len(rows)}건의 회의록을 찾았습니다." if rows else "검색 결과가 없습니다.",
-            }
-        except Exception as e:
-            return {"error": str(e), "minutes": [], "count": 0}
-
-
-@mcp.tool()
-async def get_petitions(
-    status: Optional[str] = None,
-    keyword: Optional[str] = None,
-    page: int = 1,
-    page_size: int = 10,
-) -> dict[str, Any]:
-    """
-    청원 접수목록을 조회합니다.
-
-    Get list of petitions filed to the National Assembly.
-
-    NOTE: 이 tool은 엔드포인트 코드 확인 후 활성화됩니다.
-    client.py의 EP_PETITION을 업데이트하세요.
-    infaId: OOWY4R001216HX11482
-
-    Args:
-        status: 청원 상태 필터 (선택)
-        keyword: 키워드 검색 (선택)
-        page: 페이지 번호 (기본값: 1)
-        page_size: 페이지당 결과수 (기본값: 10)
-    """
-    async with AssemblyAPIClient() as client:
-        try:
-            rows = await client.get_petitions(
-                status=status,
-                keyword=keyword,
-                page=page,
-                page_size=page_size,
-            )
-            return {
-                "petitions": rows,
-                "count": len(rows),
-                "message": f"{len(rows)}건의 청원을 찾았습니다." if rows else "검색 결과가 없습니다.",
-            }
-        except Exception as e:
-            return {"error": str(e), "petitions": [], "count": 0}
-
-
-@mcp.tool()
-async def get_bill_content(bill_id: str) -> dict[str, Any]:
-    """
-    법률안 제안이유 및 주요내용을 조회합니다.
-
-    Get the rationale and key content of a bill.
-
-    NOTE: 이 tool은 엔드포인트 코드 확인 후 활성화됩니다.
-    client.py의 EP_BILL_CONTENT를 업데이트하세요.
-    infaId: OS46YD0012559515463
-
-    Args:
-        bill_id: 의안ID (search_bills 결과의 BILL_ID) — 필수
-    """
-    async with AssemblyAPIClient() as client:
-        try:
-            rows = await client.get_bill_content(bill_id=bill_id)
-            if not rows:
-                return {"content": None, "message": f"BILL_ID {bill_id}의 내용을 찾을 수 없습니다."}
-            return {"content": rows[0], "message": "조회 성공"}
-        except Exception as e:
-            return {"error": str(e), "content": None}
-
-
-@mcp.tool()
-async def get_bill_proposers(bill_no: str) -> dict[str, Any]:
+async def get_bill_proposers(bill_id: str) -> dict[str, Any]:
     """
     의안 제안자(공동발의자) 정보를 조회합니다.
 
-    Get the list of co-sponsors for a bill.
-
-    NOTE: 이 tool은 엔드포인트 코드 확인 후 활성화됩니다.
-    client.py의 EP_BILL_PROPOSERS를 업데이트하세요.
-    infaId: OOWY4R001216HX11460
+    Get the list of all proposers (lead and co-sponsors) for a bill.
 
     Args:
-        bill_no: 의안번호 (예: "2217175") — 필수
+        bill_id: 의안ID (search_bills 결과의 BILL_ID, 예: "PRC_Y2Z6X0...") — 필수
+
+    Returns:
+        proposers: 제안자 목록 (PPSR_NM, PPSR_POLY_NM, REP_DIV, PPSR_ROLE,
+                   PPSL_DT, BILL_NM 등)
+        count: 반환된 건수
     """
     async with AssemblyAPIClient() as client:
         try:
-            rows = await client.get_bill_proposers(bill_no=bill_no)
+            rows = await client.get_bill_proposers(bill_id=bill_id)
             return {
                 "proposers": rows,
                 "count": len(rows),
@@ -393,17 +283,18 @@ async def get_committee_members(
     """
     위원회 위원 명단을 조회합니다.
 
-    Get the list of members for a specific committee.
-
-    NOTE: 이 tool은 엔드포인트 코드 확인 후 활성화됩니다.
-    client.py의 EP_COMMITTEE_MEMBERS를 업데이트하세요.
-    infaId: OCAJQ4001000LI18751
+    Get members of a National Assembly committee.
+    Uses the member info API filtered by committee name.
 
     Args:
         age: 대수 (기본값: "22")
-        committee: 위원회명 (선택, 예: "법제사법위원회")
+        committee: 위원회명 (선택, 예: "법제사법위원회", "국토교통위원회")
         page: 페이지 번호 (기본값: 1)
         page_size: 페이지당 결과수 (기본값: 50)
+
+    Returns:
+        members: 위원 목록 (HG_NM, POLY_NM, ORIG_NM, CMIT_NM, REELE_GBN_NM 등)
+        count: 반환된 건수
     """
     async with AssemblyAPIClient() as client:
         try:
@@ -420,6 +311,92 @@ async def get_committee_members(
             }
         except Exception as e:
             return {"error": str(e), "members": [], "count": 0}
+
+
+@mcp.tool()
+async def search_minutes(
+    age: Optional[str] = None,
+    committee: Optional[str] = None,
+    date_from: Optional[str] = None,
+    date_to: Optional[str] = None,
+    minutes_type: str = "committee",
+) -> dict[str, Any]:
+    """
+    국회 회의록을 검색합니다 (현재 미지원).
+
+    NOTE: 열린국회정보 회의록 API(위원회/본회의)는 파일데이터로만 제공되며
+    Open API 엔드포인트가 확인되지 않았습니다.
+    회의록 전문은 https://likms.assembly.go.kr/record/에서 직접 검색하세요.
+
+    Args:
+        age: 대수 (선택)
+        committee: 위원회명 (선택)
+        date_from: 시작일 (선택, YYYYMMDD)
+        date_to: 종료일 (선택, YYYYMMDD)
+        minutes_type: "committee" | "plenary"
+    """
+    return {
+        "error": "회의록 Open API 엔드포인트 미확인",
+        "minutes": [],
+        "count": 0,
+        "message": (
+            "열린국회정보 회의록 API는 현재 Open API 엔드포인트가 확인되지 않았습니다. "
+            "회의록 전문 검색은 https://likms.assembly.go.kr/record/ 를 이용하세요."
+        ),
+    }
+
+
+@mcp.tool()
+async def get_petitions(
+    status: Optional[str] = None,
+    keyword: Optional[str] = None,
+    page: int = 1,
+    page_size: int = 10,
+) -> dict[str, Any]:
+    """
+    청원 접수목록을 조회합니다 (현재 미지원).
+
+    NOTE: 열린국회정보 청원 API는 파일데이터로만 제공되며
+    Open API 엔드포인트가 확인되지 않았습니다.
+    청원 현황은 https://petitions.assembly.go.kr/ 에서 확인하세요.
+
+    Args:
+        status: 청원 상태 필터 (선택)
+        keyword: 키워드 검색 (선택)
+        page: 페이지 번호 (기본값: 1)
+        page_size: 페이지당 결과수 (기본값: 10)
+    """
+    return {
+        "error": "청원 Open API 엔드포인트 미확인",
+        "petitions": [],
+        "count": 0,
+        "message": (
+            "열린국회정보 청원 API는 현재 Open API 엔드포인트가 확인되지 않았습니다. "
+            "청원 현황은 https://petitions.assembly.go.kr/ 를 이용하세요."
+        ),
+    }
+
+
+@mcp.tool()
+async def get_bill_content(bill_id: str) -> dict[str, Any]:
+    """
+    법률안 제안이유 및 주요내용을 조회합니다 (현재 미지원).
+
+    NOTE: 법률안 제안이유/주요내용 API는 Open API 엔드포인트가 확인되지 않았습니다.
+    법안 원문은 get_bill_detail의 LINK_URL을 통해 의안정보시스템에서 확인하세요.
+
+    Args:
+        bill_id: 의안ID — 필수
+    """
+    return {
+        "error": "법률안 제안이유 Open API 엔드포인트 미확인",
+        "content": None,
+        "message": (
+            "법률안 제안이유 및 주요내용 API는 현재 Open API 엔드포인트가 확인되지 않았습니다. "
+            "get_bill_detail 또는 get_bill_review로 기본 의안정보를 조회하고, "
+            "LINK_URL을 통해 의안정보시스템에서 원문을 확인하세요."
+        ),
+    }
 
 
 # ------------------------------------------------------------------

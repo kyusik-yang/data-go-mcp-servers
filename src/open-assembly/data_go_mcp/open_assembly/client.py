@@ -17,13 +17,11 @@ EP_BILL_REVIEW = "nwbpacrgavhjryiph"    # 의안 처리·심사정보
 EP_MEMBER = "nwvrqwxyaytdsfvhu"         # 국회의원 정보 통합 API
 EP_VOTE = "ncocpgfiaoituanbr"           # 의안별 표결현황
 
-# TODO: verify these endpoint codes via open.assembly.go.kr spec download
-EP_MINUTES_COMMITTEE = "PLACEHOLDER_COMMITTEE_MINUTES"   # 위원회 회의록 (infaId: OR137O001023MZ19321)
-EP_MINUTES_PLENARY = "PLACEHOLDER_PLENARY_MINUTES"       # 본회의 회의록 (infaId: OO1X9P001017YF13038)
-EP_PETITION = "PLACEHOLDER_PETITION"                     # 청원 접수목록 (infaId: OOWY4R001216HX11482)
-EP_BILL_CONTENT = "PLACEHOLDER_BILL_CONTENT"             # 법률안 제안이유 (infaId: OS46YD0012559515463)
-EP_BILL_PROPOSERS = "PLACEHOLDER_BILL_PROPOSERS"         # 의안 제안자정보 (infaId: OOWY4R001216HX11460)
-EP_COMMITTEE_MEMBERS = "PLACEHOLDER_COMMITTEE_MEMBERS"   # 위원회 위원 명단 (infaId: OCAJQ4001000LI18751)
+# Confirmed additional endpoints (verified 2026-03)
+EP_BILL_PROPOSERS = "BILLINFOPPSR"      # 의안 제안자정보 (requires BILL_ID)
+# EP_COMMITTEE_MEMBERS reuses EP_MEMBER with CMIT_NM filter
+
+# Not available as Open API (only file data): 회의록, 청원, 법률안 제안이유
 
 
 class AssemblyAPIClient:
@@ -167,69 +165,16 @@ class AssemblyAPIClient:
         })
 
     # ------------------------------------------------------------------
-    # P2: 추가 4개 Tool 메서드 (엔드포인트 확인 필요)
+    # P2: 추가 Tool 메서드
     # ------------------------------------------------------------------
 
-    async def search_minutes(
-        self,
-        age: Optional[str] = None,
-        committee: Optional[str] = None,
-        date_from: Optional[str] = None,
-        date_to: Optional[str] = None,
-        page: int = 1,
-        page_size: int = 10,
-        minutes_type: str = "committee",
-    ) -> list[dict]:
-        """회의록 검색 (위원회 또는 본회의).
+    async def get_bill_proposers(self, bill_id: str) -> list[dict]:
+        """의안 제안자(공동발의자) 정보 조회. (BILLINFOPPSR)
 
-        TODO: EP_MINUTES_COMMITTEE, EP_MINUTES_PLENARY 엔드포인트 코드 확인 필요.
-        open.assembly.go.kr에서 infaId OR137O001023MZ19321 (위원회)
-        또는 OO1X9P001017YF13038 (본회의)의 명세서를 다운로드하여 확인.
+        Args:
+            bill_id: 의안ID (search_bills 결과의 BILL_ID, 예: PRC_Y2Z6X0...)
         """
-        ep = EP_MINUTES_COMMITTEE if minutes_type == "committee" else EP_MINUTES_PLENARY
-        return await self._get(ep, {
-            "AGE": age,
-            "CMIT_NM": committee,
-            "FROM_DATE": date_from,
-            "TO_DATE": date_to,
-            "pIndex": page,
-            "pSize": page_size,
-        })
-
-    async def get_petitions(
-        self,
-        status: Optional[str] = None,
-        keyword: Optional[str] = None,
-        page: int = 1,
-        page_size: int = 10,
-    ) -> list[dict]:
-        """청원 접수목록 조회.
-
-        TODO: EP_PETITION 엔드포인트 코드 확인 필요.
-        infaId: OOWY4R001216HX11482
-        """
-        return await self._get(EP_PETITION, {
-            "STATUS": status,
-            "KEYWORD": keyword,
-            "pIndex": page,
-            "pSize": page_size,
-        })
-
-    async def get_bill_content(self, bill_id: str) -> list[dict]:
-        """법률안 제안이유 및 주요내용 조회.
-
-        TODO: EP_BILL_CONTENT 엔드포인트 코드 확인 필요.
-        infaId: OS46YD0012559515463
-        """
-        return await self._get(EP_BILL_CONTENT, {"BILL_ID": bill_id})
-
-    async def get_bill_proposers(self, bill_no: str) -> list[dict]:
-        """의안 제안자(공동발의자) 정보 조회.
-
-        TODO: EP_BILL_PROPOSERS 엔드포인트 코드 확인 필요.
-        infaId: OOWY4R001216HX11460
-        """
-        return await self._get(EP_BILL_PROPOSERS, {"BILL_NO": bill_no})
+        return await self._get(EP_BILL_PROPOSERS, {"BILL_ID": bill_id})
 
     async def get_committee_members(
         self,
@@ -238,12 +183,8 @@ class AssemblyAPIClient:
         page: int = 1,
         page_size: int = 50,
     ) -> list[dict]:
-        """위원회 위원 명단 조회.
-
-        TODO: EP_COMMITTEE_MEMBERS 엔드포인트 코드 확인 필요.
-        infaId: OCAJQ4001000LI18751
-        """
-        return await self._get(EP_COMMITTEE_MEMBERS, {
+        """위원회 위원 명단 조회. 국회의원 정보 API(EP_MEMBER)에 위원회 필터 적용."""
+        return await self._get(EP_MEMBER, {
             "UNIT_CD": unit_cd,
             "CMIT_NM": committee,
             "pIndex": page,
